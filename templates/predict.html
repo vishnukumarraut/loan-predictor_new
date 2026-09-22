@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanPredict AI — Loan Prediction & Bank Matching</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>🏦</text></svg>">
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────────── -->
+<nav class="navbar">
+  <a href="/" class="nav-brand">
+    <span class="brand-icon">🏦</span>
+    LoanPredict <span class="gradient-text">AI</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/predict" class="active">Predict</a></li>
+    <li><a href="/dashboard">Dashboard</a></li>
+    <li><a href="/about">About</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">☀️</button>
+    <button class="btn-icon hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-nav" id="mobileNav">
+  <a href="/">🏠 Home</a>
+  <a href="/predict">🔮 Loan Prediction</a>
+  <a href="/dashboard">📊 Dashboard</a>
+  <a href="/about">ℹ️ About</a>
+</div>
+
+<!-- ── Loading overlay ────────────────────────────────────── -->
+<div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
+  <div class="spinner"></div>
+  <div class="loading-text">Analyzing your profile &amp; matching Indian Bank products…</div>
+</div>
+
+<div class="page-wrapper">
+
+  <!-- ── Hero ──────────────────────────────────────────────── -->
+  <div class="predict-hero">
+    <div class="orb orb-1" style="width:280px;height:280px;opacity:.15"></div>
+    <div class="orb orb-2" style="width:220px;height:220px;opacity:.12"></div>
+    <div class="container">
+      <div class="hero-badge" style="justify-content:center;margin-bottom:0.75rem">
+        <span class="dot"></span>
+        Loan Eligibility Analysis &bull; Illustrative Bank Criteria (Demo Data)
+      </div>
+      <h1>Check Your <span class="gradient-text">Loan Eligibility</span></h1>
+      <p>Enter your application details below. Our AI model will assess your profile, predict eligibility, and match real Indian Bank loan products.</p>
+    </div>
+  </div>
+
+  <div class="container" style="max-width:960px;padding-bottom:5rem">
+
+    <!-- ── Project Disclaimer Notice ────────────────────────── -->
+    <div class="glass-card mb-4" style="padding:1.25rem 1.75rem;border-left:4px solid var(--blue);background:rgba(79,142,247,0.06)">
+      <div class="d-flex align-center gap-2" style="color:var(--text-main);font-size:0.875rem">
+        <span style="font-size:1.25rem">ℹ️</span>
+        <div>
+          <strong>College Project Notice &mdash; Demo Data:</strong>
+          Displayed eligibility criteria and interest rates are for <em>Illustrative / Demo Data</em> purposes for real Indian Banks. This evaluation indicates profile compatibility against configured rules and does <u>not</u> guarantee official bank loan approval.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Prediction Form ───────────────────────────────────── -->
+    <form id="predictForm" novalidate>
+      
+      <!-- ── Applicant Identity & Loan Type ───────────────────── -->
+      <div class="glass-card" style="padding:2rem 2.5rem;margin-bottom:1.5rem">
+        <h3 style="margin-bottom:1.5rem;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem">
+          <span>📝</span> Applicant Details &amp; Preferred Loan
+        </h3>
+        <div class="form-grid">
+          <!-- Full Name -->
+          <div class="form-group">
+            <label class="form-label" for="applicant_name">Full Name</label>
+            <input type="text" id="applicant_name" name="applicant_name" class="form-control" placeholder="e.g. Rahul Sharma" required>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="form-group">
+            <label class="form-label" for="phone_number">Mobile Number</label>
+            <input type="tel" id="phone_number" name="phone_number" class="form-control" placeholder="e.g. 9876543210" maxlength="10" required>
+          </div>
+
+          <!-- PAN Number -->
+          <div class="form-group">
+            <label class="form-label" for="pan_number">PAN Number <span style="font-weight:normal;color:var(--text-muted)">(Format: ABCDE1234F)</span></label>
+            <input type="text" id="pan_number" name="pan_number" class="form-control" placeholder="ABCDE1234F" style="text-transform:uppercase" maxlength="10" required>
+            <div class="input-hint">🔒 Sensitive data: PAN is strictly validated and masked in results (ABCDE****F).</div>
+          </div>
+
+          <!-- Loan Product Type -->
+          <div class="form-group">
+            <label class="form-label" for="loan_type">Loan Product Type</label>
+            <select id="loan_type" name="loan_type" class="form-control" required>
+              <option value="Personal Loan" selected>Personal Loan</option>
+              <option value="Home Loan">Home Loan</option>
+              <option value="Vehicle Loan">Vehicle Loan</option>
+              <option value="Education Loan">Education Loan</option>
+              <option value="Business Loan">Business Loan</option>
+              <option value="Gold Loan">Gold Loan</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <!-- Preferred Bank -->
+          <div class="form-group span-2">
+            <label class="form-label" for="preferred_bank">Select Preferred Bank</label>
+            <select id="preferred_bank" name="preferred_bank" class="form-control" required>
+              <option value="" disabled selected>Select Preferred Bank</option>
+              <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
+              <option value="Punjab National Bank (PNB)">Punjab National Bank (PNB)</option>
+              <option value="Bank of Baroda">Bank of Baroda</option>
+              <option value="Canara Bank">Canara Bank</option>
+              <option value="Union Bank of India">Union Bank of India</option>
+              <option value="Bank of India">Bank of India</option>
+              <option value="Indian Bank">Indian Bank</option>
+              <option value="Central Bank of India">Central Bank of India</option>
+              <option value="UCO Bank">UCO Bank</option>
+              <option value="Bank of Maharashtra">Bank of Maharashtra</option>
+              <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+              <option value="HDFC Bank">HDFC Bank</option>
+              <option value="ICICI Bank">ICICI Bank</option>
+              <option value="Axis Bank">Axis Bank</option>
+              <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
+              <option value="IndusInd Bank">IndusInd Bank</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Personal Profile ─────────────────────────────────── -->
+      <div class="glass-card" style="padding:2rem 2.5rem;margin-bottom:1.5rem">
+        <h3 style="margin-bottom:1.5rem;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem">
+          <span>👤</span> Personal Profile
+        </h3>
+        <div class="form-grid">
+
+          <!-- Gender -->
+          <div class="form-group">
+            <label class="form-label" for="gender">Gender</label>
+            <select id="gender" name="gender" class="form-control" required>
+              <option value="">Select gender</option>
+              <option value="Male" selected>Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          <!-- Married -->
+          <div class="form-group">
+            <label class="form-label" for="married">Marital Status</label>
+            <select id="married" name="married" class="form-control" required>
+              <option value="">Select status</option>
+              <option value="Yes" selected>Married</option>
+              <option value="No">Single / Unmarried</option>
+            </select>
+          </div>
+
+          <!-- Dependents -->
+          <div class="form-group">
+            <label class="form-label" for="dependents">Number of Dependents</label>
+            <select id="dependents" name="dependents" class="form-control" required>
+              <option value="">Select dependents</option>
+              <option value="0">0</option>
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3+</option>
+            </select>
+          </div>
+
+          <!-- Education -->
+          <div class="form-group">
+            <label class="form-label" for="education">Education Level</label>
+            <select id="education" name="education" class="form-control" required>
+              <option value="">Select education</option>
+              <option value="Graduate" selected>Graduate</option>
+              <option value="Not Graduate">Not Graduate</option>
+            </select>
+          </div>
+
+          <!-- Self Employed -->
+          <div class="form-group">
+            <label class="form-label" for="self_employed">Self Employed</label>
+            <select id="self_employed" name="self_employed" class="form-control" required>
+              <option value="">Select</option>
+              <option value="No" selected>No</option>
+              <option value="Yes">Yes</option>
+            </select>
+          </div>
+
+          <!-- Property Area -->
+          <div class="form-group">
+            <label class="form-label" for="property_area">Property Area</label>
+            <select id="property_area" name="property_area" class="form-control" required>
+              <option value="">Select area</option>
+              <option value="Urban" selected>Urban</option>
+              <option value="Semiurban">Semiurban</option>
+              <option value="Rural">Rural</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Financial Details ────────────────────────────────── -->
+      <div class="glass-card" style="padding:2rem 2.5rem;margin-bottom:1.5rem">
+        <h3 style="margin-bottom:1.5rem;font-size:1.1rem;display:flex;align-items:center;gap:0.5rem">
+          <span>💰</span> Financial Details &amp; Request
+        </h3>
+        <div class="form-grid">
+
+          <!-- Applicant Income (range) -->
+          <div class="form-group span-2">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label" for="applicant_income">Applicant Monthly Income</label>
+              <span class="range-val" id="applicant_income_val">₹50,000</span>
+            </div>
+            <input type="range" id="applicant_income" name="applicant_income"
+              min="15000" max="800000" step="500" value="50000"
+              data-prefix="₹" data-suffix="">
+            <div class="range-labels"><span>₹15,000</span><span>₹8,00,000</span></div>
+          </div>
+
+          <!-- Co-applicant Income (range) -->
+          <div class="form-group span-2">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label" for="coapplicant_income">Co-Applicant Monthly Income</label>
+              <span class="range-val" id="coapplicant_income_val">₹0</span>
+            </div>
+            <input type="range" id="coapplicant_income" name="coapplicant_income"
+              min="0" max="400000" step="500" value="0"
+              data-prefix="₹" data-suffix="">
+            <div class="range-labels"><span>₹0</span><span>₹4,00,000</span></div>
+          </div>
+
+          <!-- Loan Amount -->
+          <div class="form-group">
+            <div class="d-flex align-center justify-between mb-1">
+              <label class="form-label" for="loan_amount">Requested Loan Amount</label>
+              <span class="range-val" id="loan_amount_val">₹15,00,000</span>
+            </div>
+            <input type="range" id="loan_amount" name="loan_amount"
+              min="100000" max="7000000" step="10000" value="1500000"
+              data-prefix="₹">
+            <div class="range-labels">
+              <span>₹1 Lakh</span>
+              <span>₹70 Lakh</span>
+            </div>
+          </div>
+
+          <!-- Loan Term -->
+          <div class="form-group">
+            <label class="form-label" for="loan_term">Loan Tenure</label>
+            <select id="loan_term" name="loan_term" class="form-control" required>
+              <option value="12">12 months (1 yr)</option>
+              <option value="36">36 months (3 yrs)</option>
+              <option value="60">60 months (5 yrs)</option>
+              <option value="84">84 months (7 yrs)</option>
+              <option value="120">120 months (10 yrs)</option>
+              <option value="180">180 months (15 yrs)</option>
+              <option value="240">240 months (20 yrs)</option>
+              <option value="300">300 months (25 yrs)</option>
+              <option value="360" selected>360 months (30 yrs)</option>
+              <option value="480">480 months (40 yrs)</option>
+            </select>
+          </div>
+
+          <!-- Credit History -->
+          <div class="form-group span-2">
+            <label class="form-label" for="credit_history">Credit History Rating</label>
+            <select id="credit_history" name="credit_history" class="form-control" required>
+              <option value="Yes" selected>Good (meets guidelines &amp; score &gt; 700)</option>
+              <option value="No">Poor / No Credit History</option>
+            </select>
+            <div class="input-hint">Credit history is a primary decision factor across Indian lenders.</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Submit buttons -->
+      <div class="form-submit-row">
+        <button type="submit" class="btn-primary btn-lg">
+          🔮 Predict Loan Eligibility &amp; Match Banks
+        </button>
+        <button type="button" class="btn-secondary btn-lg" id="resetBtn">
+          🔄 Reset Form
+        </button>
+      </div>
+    </form>
+
+    <!-- ── Dynamic Prediction Result & Visualizations Container ───── -->
+    <div id="resultSection" style="display:none;margin-top:2.5rem"></div>
+
+    <!-- ── Partner Banks & Loan Providers Section ─────────────────────── -->
+    <div id="partnerBanksSection" class="glass-card mt-5" style="padding:2.5rem 2rem;">
+      <div style="text-align:center;margin-bottom:2rem">
+        <h2 style="font-size:1.6rem;margin-bottom:0.4rem;display:flex;align-items:center;justify-content:center;gap:0.6rem">
+          <span>🏛️</span> Partner Banks &amp; Loan Providers
+        </h2>
+        <p style="color:var(--text-secondary);font-size:0.95rem;max-width:600px;margin:0 auto">
+          Compare loan options from leading Indian banks
+        </p>
+      </div>
+
+      <!-- Bank Image / Banner Visual -->
+      <div class="bank-banner-wrapper mb-4" style="position:relative;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);background:linear-gradient(135deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95));">
+        <img src="{{ url_for('static', filename='images/bank-banner.png') }}" alt="Leading Indian Banks & Loan Providers" style="width:100%;max-height:240px;object-fit:cover;display:block;opacity:0.9;" onerror="this.style.display='none';document.getElementById('fallbackBanner').style.display='flex'">
+        <div id="fallbackBanner" style="display:none;padding:3rem 2rem;text-align:center;background:linear-gradient(135deg, rgba(79,142,247,0.15), rgba(168,85,247,0.15));flex-direction:column;align-items:center;justify-content:center">
+          <div style="font-size:3rem;margin-bottom:0.5rem">🏦 🇮🇳</div>
+          <h3 style="font-size:1.4rem;color:#fff;margin-bottom:0.25rem">Leading Indian Banking Lenders</h3>
+          <p style="color:var(--text-muted);font-size:0.875rem">Compare interest rates, terms &amp; eligibility criteria</p>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top, rgba(15,23,42,0.95), transparent);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+          <div style="color:#fff;font-weight:600;font-size:0.95rem;display:flex;align-items:center;gap:0.5rem">
+            <span>🇮🇳</span> Premier Indian Banking Network
+          </div>
+          <span class="badge badge-blue">16 Top Indian Banks</span>
+        </div>
+      </div>
+
+      <!-- All Indian Bank Cards (Responsive Grid) -->
+      <div class="partner-banks-grid mb-4">
+        <!-- 1. SBI -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(79,142,247,0.15);color:#4f8ef7">🏛️</div>
+          <div class="partner-bank-name">State Bank of India (SBI)</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('State Bank of India (SBI)')">View Loans</button>
+        </div>
+        <!-- 2. PNB -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(234,179,8,0.15);color:#eab308">🏦</div>
+          <div class="partner-bank-name">Punjab National Bank (PNB)</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Punjab National Bank (PNB)')">View Loans</button>
+        </div>
+        <!-- 3. Bank of Baroda -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(249,115,22,0.15);color:#f97316">🏛️</div>
+          <div class="partner-bank-name">Bank of Baroda</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Bank of Baroda')">View Loans</button>
+        </div>
+        <!-- 4. Canara Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(34,211,238,0.15);color:#22d3ee">🏦</div>
+          <div class="partner-bank-name">Canara Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Canara Bank')">View Loans</button>
+        </div>
+        <!-- 5. Union Bank of India -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(168,85,247,0.15);color:#a855f7">🏛️</div>
+          <div class="partner-bank-name">Union Bank of India</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Union Bank of India')">View Loans</button>
+        </div>
+        <!-- 6. Bank of India -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(59,130,246,0.15);color:#3b82f6">⭐</div>
+          <div class="partner-bank-name">Bank of India</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Bank of India')">View Loans</button>
+        </div>
+        <!-- 7. Indian Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(16,185,129,0.15);color:#10b981">🏦</div>
+          <div class="partner-bank-name">Indian Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Indian Bank')">View Loans</button>
+        </div>
+        <!-- 8. Central Bank of India -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(236,72,153,0.15);color:#ec4899">🏛️</div>
+          <div class="partner-bank-name">Central Bank of India</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Central Bank of India')">View Loans</button>
+        </div>
+        <!-- 9. UCO Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(20,184,166,0.15);color:#14b8a6">🏦</div>
+          <div class="partner-bank-name">UCO Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('UCO Bank')">View Loans</button>
+        </div>
+        <!-- 10. Bank of Maharashtra -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(245,158,11,0.15);color:#f59e0b">🏛️</div>
+          <div class="partner-bank-name">Bank of Maharashtra</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Bank of Maharashtra')">View Loans</button>
+        </div>
+        <!-- 11. Kotak Mahindra Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(239,68,68,0.15);color:#ef4444">💳</div>
+          <div class="partner-bank-name">Kotak Mahindra Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Kotak Mahindra Bank')">View Loans</button>
+        </div>
+        <!-- 12. HDFC Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(59,130,246,0.15);color:#60a5fa">🏢</div>
+          <div class="partner-bank-name">HDFC Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('HDFC Bank')">View Loans</button>
+        </div>
+        <!-- 13. ICICI Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(249,115,22,0.15);color:#fb923c">🏛️</div>
+          <div class="partner-bank-name">ICICI Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('ICICI Bank')">View Loans</button>
+        </div>
+        <!-- 14. Axis Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(225,29,72,0.15);color:#f43f5e">💳</div>
+          <div class="partner-bank-name">Axis Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('Axis Bank')">View Loans</button>
+        </div>
+        <!-- 15. IDFC FIRST Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(147,51,234,0.15);color:#c084fc">⚡</div>
+          <div class="partner-bank-name">IDFC FIRST Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('IDFC FIRST Bank')">View Loans</button>
+        </div>
+        <!-- 16. IndusInd Bank -->
+        <div class="partner-bank-card">
+          <div class="partner-bank-icon" style="background:rgba(180,83,9,0.15);color:#fbbf24">💼</div>
+          <div class="partner-bank-name">IndusInd Bank</div>
+          <div class="partner-bank-sub">Loan Options Available</div>
+          <button class="btn-secondary btn-sm partner-bank-btn" onclick="showBankModal('IndusInd Bank')">View Loans</button>
+        </div>
+      </div>
+
+      <!-- Disclaimer Box -->
+      <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);text-align:center;font-size:0.825rem;color:var(--text-muted);line-height:1.5">
+        ℹ️ <strong>Disclaimer:</strong> Bank information and eligibility criteria shown on this project may be illustrative. Please verify current terms directly with the respective bank.
+      </div>
+    </div>
+
+    <!-- ── Google Sheets Data Connection Panel ─────────────────────── -->
+    <div class="glass-card mt-5" style="padding:2rem">
+      <div class="d-flex align-center justify-between flex-wrap gap-2 mb-3">
+        <h3 style="font-size:1.1rem;display:flex;align-items:center;gap:0.5rem">
+          <span>📊</span> Google Sheets Apps Script Integration
+        </h3>
+        <span class="badge badge-purple" id="sheetsStatusBadge">Status: Disconnected / Ready</span>
+      </div>
+      <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:1.25rem">
+        Connect your Google Apps Script Web App endpoint URL to automatically store loan applications in your Google Sheet and fetch dynamic aggregate statistics.
+      </p>
+      
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <input type="url" id="googleSheetUrl" class="form-control" style="flex:1;min-width:280px"
+          placeholder="Paste Google Apps Script Web App URL (e.g. https://script.google.com/macros/s/.../exec)">
+        <button type="button" class="btn-primary" id="saveSheetUrlBtn">💾 Save Endpoint</button>
+        <button type="button" class="btn-secondary" id="syncSheetDataBtn">🔄 Sync Stats</button>
+      </div>
+
+      <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800" style="font-size:0.8rem;color:var(--text-muted)">
+        💡 <strong>Sheet Columns Expected:</strong> Timestamp, Application ID, Name, Phone Number, PAN (Masked), Loan Type, Preferred Bank, Income, Loan Amount, Loan Term, Credit History, Prediction, Risk, EMI, DTI.
+      </div>
+    </div>
+
+    <!-- ── Prediction History Table ───────────────────────────── -->
+    <div class="glass-card mt-4" style="padding:1.75rem">
+      <div class="d-flex align-center justify-between mb-3">
+        <h3 style="font-size:1rem">📋 Recent Application History</h3>
+        <button class="btn-icon" onclick="loadHistory()" title="Refresh">🔄</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>App ID</th>
+              <th>Applicant</th>
+              <th>PAN (Masked)</th>
+              <th>Loan Type</th>
+              <th>Income</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Probability</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody">
+            <tr><td colspan="9" style="text-align:center;color:var(--text-muted)">No predictions recorded yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /page-wrapper -->
+
+<!-- ── Product Details Modal Container ───────────────────────── -->
+<div id="productModalContainer"></div>
+
+<div id="toast-container"></div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
